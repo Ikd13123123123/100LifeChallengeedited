@@ -1,0 +1,14 @@
+{
+	"geode": "3.6.1",
+	"gd": {
+		"win": "2.206",
+		"android": "2.206",
+		"mac": "2.206",
+		"ios": "2.206"
+	},
+	"id": "ata.100_life_challenge",
+	"name": "100 Life Challenge",
+	"version": "v1.0.0",
+	"developer": "ata",
+	"description": "Brings EVWs 100 Life Challenge to the game."
+}
