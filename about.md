@@ -7,4 +7,6 @@ When you go to [the recent taaaaaaab](https://gdbrowser.com/search/*?type=recent
 ## Credits
 **theabsolute52** for making the textures
 
+**[qimiko](https://github.com/qimiko) and [thesillydoggo](https://github.com/thesillydoggo)** for immense help with development
+
 **[EVW](https://youtube.com/EricVanWilderman)** for the original idea

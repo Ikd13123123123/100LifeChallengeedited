@@ -3,6 +3,8 @@
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/LevelCell.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
+#include <Geode/modify/EffectGameObject.hpp>
 #include <Geode/modify/LevelInfoLayer.hpp>
 
 using namespace cocos2d;
@@ -13,6 +15,10 @@ struct Challenge {
 	int skips = 3;
 	int levels = 0;
 	bool active = false;
+
+	bool tempCoin1;
+	bool tempCoin2;
+	bool tempCoin3;
 } challenge;
 
 class $modify(ChallengeBrowser, LevelBrowserLayer) {
@@ -34,7 +40,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		}
 
 		if (auto menu = this->getChildByID("refresh-menu")) {
-			auto sprite = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
+			auto sprite = CCSprite::createWithSpriteFrameName("100LifeButton.png"_spr);
 			
 			auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onChallenge));
 			button->setID("hundred-challenge-button");
@@ -186,6 +192,10 @@ class $modify(LevelCell) {
 };
 
 class $modify(PlayLayer) {
+	struct Fields {
+		std::vector<EffectGameObject*> coins;
+	};
+	
 	void destroyPlayer(PlayerObject* player, GameObject* obj) {
 		if (obj == m_anticheatSpike) return PlayLayer::destroyPlayer(player, obj);
 		if (this->m_isPracticeMode) return PlayLayer::destroyPlayer(player, obj);
@@ -203,7 +213,35 @@ class $modify(PlayLayer) {
 			ChallengeBrowser::Fields::lastCompletedIndex++;
 			challenge.levels++;
 		}
+
+		/*
+		int coinsAmount = 0;
+		geode::log::info("{}", m_fields->coins.size());
+		for (int i = 0; i < m_fields->coins.size(); i++) {
+			geode::log::info("{}", m_fields->coins[i]);
+			if (m_fields->coins[i]->m_opacity == 0) {
+				coinsAmount++;
+			}
+		}*/
+
 		PlayLayer::levelComplete();
+	}
+
+	void addObject(GameObject* obj) {
+		PlayLayer::addObject(obj);
+
+		if (obj->m_objectType == GameObjectType::UserCoin) {
+			m_fields->coins.push_back(static_cast<EffectGameObject*>(obj));
+		}
+	}
+};
+
+class $modify(GJBaseGameLayer) {
+	void pickupItem(EffectGameObject* obj) {
+		if (obj->m_objectType == GameObjectType::UserCoin) {
+		}
+
+		GJBaseGameLayer::pickupItem(obj);
 	}
 };
 

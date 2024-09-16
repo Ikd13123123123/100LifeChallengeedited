@@ -10,5 +10,12 @@
 	"name": "100 Life Challenge",
 	"version": "v1.0.0",
 	"developer": "ata",
-	"description": "Brings EVWs 100 Life Challenge to the game."
+	"description": "Brings EVWs 100 Life Challenge to the game.",
+	"resources": {
+		"spritesheets": {
+			"HundredLivesSheet": [
+				"resources/*.png"
+			]
+		}
+	}
 }
