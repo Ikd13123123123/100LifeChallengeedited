@@ -10,15 +10,15 @@
 using namespace cocos2d;
 
 struct Challenge {
+	bool active = false;
+
 	int lives = 100;
 	int practiceRuns = 3;
 	int skips = 3;
 	int levels = 0;
-	bool active = false;
+	int coins = 0;
 
-	bool tempCoin1;
-	bool tempCoin2;
-	bool tempCoin3;
+	int tempCoins = 0;
 } challenge;
 
 class $modify(ChallengeBrowser, LevelBrowserLayer) {
@@ -26,6 +26,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		static ChallengeBrowser* s_instance;
 		static int lastCompletedIndex;
 		CCMenuItemSpriteExtra* challengeButton;
+		CCMenuItemSpriteExtra* exchangeButton;
 		CCLabelBMFont* statusLabel;
 	};
 	
@@ -41,7 +42,6 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 
 		if (auto menu = this->getChildByID("refresh-menu")) {
 			auto sprite = CCSprite::createWithSpriteFrameName("100LifeButton.png"_spr);
-			
 			auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onChallenge));
 			button->setID("hundred-challenge-button");
 			button->setPositionY(50.0f);
@@ -51,6 +51,24 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		}
 
 		return true;
+	}
+
+	void onBack(CCObject* sender) {
+		if (challenge.active) {
+			geode::createQuickPopup(
+				"End Challenge",
+				"Are you sure you want to go back? <cr>This will end the current challenge!</c>",
+				"No", "Yes",
+				[this, sender](auto, bool yesBtn) {
+					if (yesBtn) {
+						challenge.active = false;
+						LevelBrowserLayer::onBack(sender);
+					}
+				}
+			);
+		} else {
+			LevelBrowserLayer::onBack(sender);
+		}
 	}
 
 	void onChallenge(CCObject*) {
@@ -65,6 +83,8 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 					challenge.practiceRuns = 3;
 					challenge.skips = 3;
 					challenge.levels = 0;
+					challenge.coins = 0;
+					challenge.tempCoins = 0;
 
 					if (this->m_fields->challengeButton) {
 						this->m_fields->challengeButton->setVisible(false);
@@ -76,13 +96,33 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		);
 	}
 
+	void onExchange(CCObject* sender) {
+		auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+		geode::createQuickPopup(
+			"Coin Exchange",
+			"Exchange 3 of your coins for a Practice Run or a Skip!",
+			"Skip", "Practice Run",
+			[this](auto, bool pRunBtn) {
+				if (pRunBtn) {
+					challenge.practiceRuns++;
+					challenge.coins -= 3;
+					updateChallengeStatus();
+				} else {
+					challenge.skips++;
+					challenge.coins -= 3;
+					updateChallengeStatus();
+				}
+			}
+		);
+	}
+
 	void showChallengeStatus() {
 		auto statusMenu = CCMenu::create();
 		statusMenu->setID("100-life-status");
 
-		auto statusLabel = CCLabelBMFont::create(fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}",
-		                    challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str(), "bigFont.fnt");
-		statusLabel->setPosition({ -238.0f, -62.0f });
+		auto statusLabel = CCLabelBMFont::create(fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}\nCoins: {}",
+		                    challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels, challenge.coins).c_str(), "bigFont.fnt");
+		statusLabel->setPosition({ -238.0f, 40.0f });
 		statusLabel->setScale(0.3f);
 
 		this->m_fields->statusLabel = statusLabel;
@@ -92,10 +132,26 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	}
 
 	void updateChallengeStatus() {
-		if (this->m_fields->statusLabel) {
-			std::string updatedStatusText = fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}",
-			                                            challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels);
-			this->m_fields->statusLabel->setString(updatedStatusText.c_str());
+		if (m_fields->statusLabel) {
+			std::string updatedStatusText = fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}\nCoins: {}",
+			                                            challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels, challenge.coins);
+			m_fields->statusLabel->setString(updatedStatusText.c_str());
+
+			if (challenge.coins >= 3 && !m_fields->exchangeButton) {
+				auto sprite = ButtonSprite::create("Exchange");
+				auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onExchange));
+				button->setID("coin-exchange");
+				button->setPosition({ -256.0f, 5.0f });
+				button->setScale(0.375f);
+				
+				m_fields->exchangeButton = button;
+
+				auto statusMenu = static_cast<CCMenu*>(this->getChildByID("100-life-status"));
+				statusMenu->addChild(button);
+			} else if (challenge.coins < 3 && m_fields->exchangeButton) {
+				m_fields->exchangeButton->removeFromParent();
+                m_fields->exchangeButton = nullptr;
+			}
 		}
 	}
 };
@@ -176,7 +232,7 @@ class $modify(LevelCell) {
 		int currentIndex = getLevelIndex(level);
 		geode::createQuickPopup(
 			"Skip Level",
-			"Are you sure you want to skip this level?",
+			"Are you sure you want to skip to this level?",
 			"No", "Yes",
 			[this, currentIndex, callback](auto, bool yesBtn) {
 				if (yesBtn) {
@@ -192,10 +248,6 @@ class $modify(LevelCell) {
 };
 
 class $modify(PlayLayer) {
-	struct Fields {
-		std::vector<EffectGameObject*> coins;
-	};
-	
 	void destroyPlayer(PlayerObject* player, GameObject* obj) {
 		if (obj == m_anticheatSpike) return PlayLayer::destroyPlayer(player, obj);
 		if (this->m_isPracticeMode) return PlayLayer::destroyPlayer(player, obj);
@@ -209,36 +261,20 @@ class $modify(PlayLayer) {
 	}
 
 	void levelComplete() {
-		if (challenge.active) {
+		if (challenge.active && !this->m_isPracticeMode) {
 			ChallengeBrowser::Fields::lastCompletedIndex++;
 			challenge.levels++;
+			challenge.coins += challenge.tempCoins;
 		}
-
-		/*
-		int coinsAmount = 0;
-		geode::log::info("{}", m_fields->coins.size());
-		for (int i = 0; i < m_fields->coins.size(); i++) {
-			geode::log::info("{}", m_fields->coins[i]);
-			if (m_fields->coins[i]->m_opacity == 0) {
-				coinsAmount++;
-			}
-		}*/
 
 		PlayLayer::levelComplete();
-	}
-
-	void addObject(GameObject* obj) {
-		PlayLayer::addObject(obj);
-
-		if (obj->m_objectType == GameObjectType::UserCoin) {
-			m_fields->coins.push_back(static_cast<EffectGameObject*>(obj));
-		}
 	}
 };
 
 class $modify(GJBaseGameLayer) {
 	void pickupItem(EffectGameObject* obj) {
-		if (obj->m_objectType == GameObjectType::UserCoin) {
+		if (obj->m_objectType == GameObjectType::UserCoin && challenge.active) {
+			challenge.tempCoins++;
 		}
 
 		GJBaseGameLayer::pickupItem(obj);
