@@ -21,6 +21,13 @@ struct Challenge {
 	int tempCoins = 0;
 } challenge;
 
+enum SkipRes {
+	DontSkip,
+	Skip,
+	OutOfSkips,
+	SkipAhead
+};
+
 class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	struct Fields {
 		static ChallengeBrowser* s_instance;
@@ -143,14 +150,14 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 				button->setID("coin-exchange");
 				button->setPosition({ -256.0f, 5.0f });
 				button->setScale(0.375f);
-				
+
 				m_fields->exchangeButton = button;
 
 				auto statusMenu = static_cast<CCMenu*>(this->getChildByID("100-life-status"));
 				statusMenu->addChild(button);
 			} else if (challenge.coins < 3 && m_fields->exchangeButton) {
 				m_fields->exchangeButton->removeFromParent();
-                m_fields->exchangeButton = nullptr;
+				m_fields->exchangeButton = nullptr;
 			}
 		}
 	}
@@ -177,30 +184,36 @@ class $modify(LevelCell) {
 		if (!challenge.active) return LevelCell::onClick(sender);
 		
 		auto level = static_cast<GJGameLevel*>(this->m_level);
-		int res = shouldSkipLevel(level);
-		if (res == 1) {
+		SkipRes res = shouldSkip(level);
+		if (res == SkipRes::Skip) {
 			promptSkip(level, [this, sender](bool shouldProceed) {
 				if (shouldProceed) {
 					LevelCell::onClick(sender);
 				}
 			});
-		} else if (res == 2) {
+		} else if (res == SkipRes::DontSkip) {
 			LevelCell::onClick(sender);
+		} else if (res == SkipRes::OutOfSkips) {
+			FLAlertLayer::create("No skips", "You are out of skips!", "OK")->show();
+		} else if (res == SkipRes::SkipAhead) {
+			FLAlertLayer::create("Skip ahead", "You are not allowed to skip ahead!", "OK")->show();
 		}
 	}
 
-	int shouldSkipLevel(GJGameLevel* level) {
+	SkipRes shouldSkip(GJGameLevel* level) {
 		if (challenge.skips <= 0) {
-			FLAlertLayer::create("No skips", "You are out of skips!", "OK")->show();
-			return 0;
+			return SkipRes::OutOfSkips;
 		}
 
 		int currentIndex = getLevelIndex(level);
 		if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 1) {
-			return 1;
-		} else {
-			return 2;
+			if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 2) {
+				return SkipRes::SkipAhead;
+			}
+			return SkipRes::Skip;
 		}
+
+		return SkipRes::DontSkip;
 	}
 
 
@@ -237,7 +250,7 @@ class $modify(LevelCell) {
 			[this, currentIndex, callback](auto, bool yesBtn) {
 				if (yesBtn) {
 					--challenge.skips;
-					ChallengeBrowser::Fields::lastCompletedIndex = currentIndex;
+					ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;					
 					callback(true);
 				} else {
 					callback(false);
@@ -251,12 +264,17 @@ class $modify(PlayLayer) {
 	void destroyPlayer(PlayerObject* player, GameObject* obj) {
 		if (obj == m_anticheatSpike) return PlayLayer::destroyPlayer(player, obj);
 		if (this->m_isPracticeMode) return PlayLayer::destroyPlayer(player, obj);
-		if (challenge.active && --challenge.lives <= 0) {
+		if (!challenge.active) return PlayLayer::destroyPlayer(player, obj);
+		
+		challenge.tempCoins = 0;
+
+		if (--challenge.lives <= 0) {
 			this->onQuit();
 			FLAlertLayer::create("Game Over!", "You are out of lives!", "OK")->show();
 			challenge.active = false;
 			return;
 		}
+
 		PlayLayer::destroyPlayer(player, obj);
 	}
 
