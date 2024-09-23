@@ -1,3 +1,4 @@
+#include "main.hpp"
 #include <Geode/Geode.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
@@ -9,24 +10,7 @@
 
 using namespace cocos2d;
 
-struct Challenge {
-	bool active = false;
-
-	int lives = 100;
-	int practiceRuns = 3;
-	int skips = 3;
-	int levels = 0;
-	int coins = 0;
-
-	int tempCoins = 0;
-} challenge;
-
-enum SkipRes {
-	DontSkip,
-	Skip,
-	OutOfSkips,
-	SkipAhead
-};
+Challenge challenge;
 
 class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	struct Fields {
@@ -139,6 +123,13 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	}
 
 	void updateChallengeStatus() {
+		if (challenge.lives <= 0) {
+			m_fields->statusLabel->removeFromParent();
+			m_fields->statusLabel = nullptr;
+
+			m_fields->challengeButton->setVisible(true);
+		}
+		
 		if (m_fields->statusLabel) {
 			std::string updatedStatusText = fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}\nCoins: {}",
 			                                            challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels, challenge.coins);
@@ -185,16 +176,19 @@ class $modify(LevelCell) {
 		
 		auto level = static_cast<GJGameLevel*>(this->m_level);
 		SkipRes res = shouldSkip(level);
+		
+		if (res == SkipRes::OutOfSkips) {
+			return FLAlertLayer::create("No skips", "You are out of skips!", "OK")->show();
+		}
+
 		if (res == SkipRes::Skip) {
-			promptSkip(level, [this, sender](bool shouldProceed) {
+			return promptSkip(level, [this, sender](bool shouldProceed) {
 				if (shouldProceed) {
 					LevelCell::onClick(sender);
 				}
 			});
 		} else if (res == SkipRes::DontSkip) {
 			LevelCell::onClick(sender);
-		} else if (res == SkipRes::OutOfSkips) {
-			FLAlertLayer::create("No skips", "You are out of skips!", "OK")->show();
 		} else if (res == SkipRes::SkipAhead) {
 			FLAlertLayer::create("Skip ahead", "You are not allowed to skip ahead!", "OK")->show();
 		}
@@ -251,9 +245,9 @@ class $modify(LevelCell) {
 				if (yesBtn) {
 					--challenge.skips;
 					ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;					
-					callback(true);
+					return callback(true);
 				} else {
-					callback(false);
+					return callback(false);
 				}
 			}
 		);
@@ -269,10 +263,8 @@ class $modify(PlayLayer) {
 		challenge.tempCoins = 0;
 
 		if (--challenge.lives <= 0) {
-			this->onQuit();
-			FLAlertLayer::create("Game Over!", "You are out of lives!", "OK")->show();
-			challenge.active = false;
-			return;
+			PlayLayer::pauseGame(true);
+			FLAlertLayer::create("Out of Lives", "You are out of lives!", "OK")->show();
 		}
 
 		PlayLayer::destroyPlayer(player, obj);

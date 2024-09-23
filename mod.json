@@ -17,5 +17,9 @@
 				"resources/*.png"
 			]
 		}
+	},
+	"links": {
+		"source": "https://github.com/at4pm/100LifeChallenge",
+		"community": "https://discord.gg/abESXwT6rK"
 	}
 }
