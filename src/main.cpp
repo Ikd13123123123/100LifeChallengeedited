@@ -34,7 +34,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		if (auto menu = this->getChildByID("refresh-menu")) {
 			auto sprite = CCSprite::createWithSpriteFrameName("100LifeButton.png"_spr);
 			auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onChallenge));
-			button->setID("hundred-challenge-button");
+			button->setID("hundred-challenge-button"_spr);
 			button->setPositionY(50.0f);
 
 			this->m_fields->challengeButton = button;
@@ -54,6 +54,8 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 					if (yesBtn) {
 						challenge.active = false;
 						LevelBrowserLayer::onBack(sender);
+					} else {
+						challenge.skips = 50;
 					}
 				}
 			);
@@ -109,7 +111,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 
 	void showChallengeStatus() {
 		auto statusMenu = CCMenu::create();
-		statusMenu->setID("100-life-status");
+		statusMenu->setID("100-life-status"_spr);
 
 		auto statusLabel = CCLabelBMFont::create(fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}\nCoins: {}",
 		                    challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels, challenge.coins).c_str(), "bigFont.fnt");
@@ -138,7 +140,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			if (challenge.coins >= 3 && !m_fields->exchangeButton) {
 				auto sprite = ButtonSprite::create("Exchange");
 				auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onExchange));
-				button->setID("coin-exchange");
+				button->setID("coin-exchange"_spr);
 				button->setPosition({ -256.0f, 5.0f });
 				button->setScale(0.375f);
 
@@ -167,10 +169,8 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		if (!content) return -1;
 
 		auto pageEntries = listView->m_entries;
-		auto pageNumber = listView->m_currentPage;
-		geode::log::info("number: {}", pageNumber);
 
-		for (int i = 0; i < content->getChildrenCount(); ++i) {
+		for (int i = 0; i < pageEntries->count(); ++i) {
 			auto cell = static_cast<LevelCell*>(content->getChildren()->objectAtIndex(i));
 			if (cell && cell->m_level == level) {
 				return i;
@@ -201,7 +201,7 @@ class $modify(LevelCell) {
 		if (!ChallengeBrowser::Fields::s_instance) return LevelCell::onClick(sender);
 		if (!challenge.active) return LevelCell::onClick(sender);
 		
-		auto level = static_cast<GJGameLevel*>(this->m_level);
+		auto level = this->m_level;
 
 		SkipRes res = shouldSkip(level);
 		if (res == SkipRes::Skip && challenge.skips > 0) {
