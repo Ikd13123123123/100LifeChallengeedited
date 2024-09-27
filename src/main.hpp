@@ -16,5 +16,6 @@ enum SkipRes {
 	DontSkip,
 	Skip,
 	OutOfSkips,
-	SkipAhead
+	SkipAhead,
+	Rebeat
 };

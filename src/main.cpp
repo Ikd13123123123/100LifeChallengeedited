@@ -152,6 +152,33 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			}
 		}
 	}
+
+	int getLevelIndex(GJGameLevel* level) {
+		auto listLayer = static_cast<GJListLayer*>(this->getChildByID("GJListLayer"));
+		if (!listLayer) return -1;
+
+		auto listView = listLayer->m_listView;
+		if (!listView) return -1;
+
+		auto table = listView->m_tableView;
+		if (!table) return -1;
+
+		auto content = table->m_contentLayer;
+		if (!content) return -1;
+
+		auto pageEntries = listView->m_entries;
+		auto pageNumber = listView->m_currentPage;
+		geode::log::info("number: {}", pageNumber);
+
+		for (int i = 0; i < content->getChildrenCount(); ++i) {
+			auto cell = static_cast<LevelCell*>(content->getChildren()->objectAtIndex(i));
+			if (cell && cell->m_level == level) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
 };
 
 ChallengeBrowser* ChallengeBrowser::Fields::s_instance = nullptr;
@@ -162,7 +189,7 @@ class $modify(PauseLayer) {
 		if (!challenge.active) return PauseLayer::onPracticeMode(sender);
 		if (challenge.practiceRuns > 0) {
 			--challenge.practiceRuns;
-			PauseLayer::onPracticeMode(sender);
+			return PauseLayer::onPracticeMode(sender);
 		} else {
 			FLAlertLayer::create("Practice Mode", "You do not have enough practice runs!", "OK")->show();
 		}
@@ -175,75 +202,50 @@ class $modify(LevelCell) {
 		if (!challenge.active) return LevelCell::onClick(sender);
 		
 		auto level = static_cast<GJGameLevel*>(this->m_level);
-		SkipRes res = shouldSkip(level);
-		
-		if (res == SkipRes::OutOfSkips) {
-			return FLAlertLayer::create("No skips", "You are out of skips!", "OK")->show();
-		}
 
-		if (res == SkipRes::Skip) {
+		SkipRes res = shouldSkip(level);
+		if (res == SkipRes::Skip && challenge.skips > 0) {
 			return promptSkip(level, [this, sender](bool shouldProceed) {
 				if (shouldProceed) {
 					LevelCell::onClick(sender);
+					--challenge.skips;
 				}
 			});
 		} else if (res == SkipRes::DontSkip) {
-			LevelCell::onClick(sender);
+			return LevelCell::onClick(sender);
 		} else if (res == SkipRes::SkipAhead) {
 			FLAlertLayer::create("Skip ahead", "You are not allowed to skip ahead!", "OK")->show();
+		} else if (res == SkipRes::Rebeat) {
+			FLAlertLayer::create("Rebeat", "You are not allowed to rebeat a level!", "OK")->show();
+		} else if (challenge.skips <= 0) {
+			FLAlertLayer::create("Out of skips!", "You are out of skips!", "OK")->show();
 		}
 	}
 
 	SkipRes shouldSkip(GJGameLevel* level) {
-		if (challenge.skips <= 0) {
-			return SkipRes::OutOfSkips;
-		}
-
-		int currentIndex = getLevelIndex(level);
+		int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(level);
 		if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 1) {
 			if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 2) {
 				return SkipRes::SkipAhead;
 			}
 			return SkipRes::Skip;
+		} 
+		
+		if (currentIndex < ChallengeBrowser::Fields::lastCompletedIndex + 1) {
+			return SkipRes::Rebeat;
 		}
 
 		return SkipRes::DontSkip;
 	}
 
-
-	int getLevelIndex(GJGameLevel* level) {
-		auto browserInstance = ChallengeBrowser::Fields::s_instance;
-		auto listLayer = static_cast<GJListLayer*>(browserInstance->getChildByID("GJListLayer"));
-		if (!listLayer) return -1;
-
-		auto listView = listLayer->m_listView;
-		if (!listView) return -1;
-
-		auto table = listView->m_tableView;
-		if (!table) return -1;
-
-		auto content = table->m_contentLayer;
-		if (!content) return -1;
-
-		for (int i = 0; i < content->getChildrenCount(); ++i) {
-			auto cell = static_cast<LevelCell*>(content->getChildren()->objectAtIndex(i));
-			if (cell && cell->m_level == level) {
-				return i;
-			}
-		}
-
-		return -1;
-	}
-
 	void promptSkip(GJGameLevel* level, std::function<void(bool)> callback) {
-		int currentIndex = getLevelIndex(level);
+		int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(level);
 		geode::createQuickPopup(
 			"Skip Level",
 			"Are you sure you want to skip to this level?",
 			"No", "Yes",
 			[this, currentIndex, callback](auto, bool yesBtn) {
 				if (yesBtn) {
-					--challenge.skips;
 					ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;					
 					return callback(true);
 				} else {
@@ -264,7 +266,7 @@ class $modify(PlayLayer) {
 
 		if (--challenge.lives <= 0) {
 			PlayLayer::pauseGame(true);
-			FLAlertLayer::create("Out of Lives", "You are out of lives!", "OK")->show();
+			FLAlertLayer::create("Out of lives!", fmt::format("You are out of lives. You survived {} levels!", challenge.levels), "OK")->show();
 		}
 
 		PlayLayer::destroyPlayer(player, obj);
@@ -274,6 +276,7 @@ class $modify(PlayLayer) {
 		if (challenge.active && !this->m_isPracticeMode) {
 			ChallengeBrowser::Fields::lastCompletedIndex++;
 			challenge.levels++;
+			challenge.lives += challenge.tempCoins;
 			challenge.coins += challenge.tempCoins;
 		}
 
@@ -297,5 +300,16 @@ class $modify(LevelInfoLayer) {
 			ChallengeBrowser::Fields::s_instance->updateChallengeStatus();
 		}
 		LevelInfoLayer::onBack(sender);
+	}
+
+	void levelUpdateFailed(int p0) {
+		if (!challenge.active) return LevelInfoLayer::levelUpdateFailed(p0);
+		
+		LevelInfoLayer::keyBackClicked();
+		
+        int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(this->m_level);
+		ChallengeBrowser::Fields::lastCompletedIndex = currentIndex;
+
+		FLAlertLayer::create("Level Failed", "This level no longer exists.", "OK")->show();
 	}
 };
