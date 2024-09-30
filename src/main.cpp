@@ -54,8 +54,6 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 					if (yesBtn) {
 						challenge.active = false;
 						LevelBrowserLayer::onBack(sender);
-					} else {
-						challenge.skips = 50;
 					}
 				}
 			);
@@ -79,6 +77,8 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 					challenge.coins = 0;
 					challenge.tempCoins = 0;
 
+                    m_fields->lastCompletedIndex = -1;
+
 					if (this->m_fields->challengeButton) {
 						this->m_fields->challengeButton->setVisible(false);
 					}
@@ -98,13 +98,12 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			[this](auto, bool pRunBtn) {
 				if (pRunBtn) {
 					challenge.practiceRuns++;
-					challenge.coins -= 3;
-					updateChallengeStatus();
 				} else {
 					challenge.skips++;
-					challenge.coins -= 3;
-					updateChallengeStatus();
 				}
+
+                challenge.coins -= 3;
+				updateChallengeStatus();
 			}
 		);
 	}
@@ -156,7 +155,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	}
 
 	int getLevelIndex(GJGameLevel* level) {
-		auto listLayer = static_cast<GJListLayer*>(this->getChildByID("GJListLayer"));
+        auto listLayer = static_cast<GJListLayer*>(this->getChildByID("GJListLayer"));
 		if (!listLayer) return -1;
 
 		auto listView = listLayer->m_listView;
@@ -177,7 +176,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			}
 		}
 
-		return -1;
+        return -1;
 	}
 };
 
@@ -223,7 +222,7 @@ class $modify(LevelCell) {
 	}
 
 	SkipRes shouldSkip(GJGameLevel* level) {
-		int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(level);
+        int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(level);
 		if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 1) {
 			if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 2) {
 				return SkipRes::SkipAhead;
@@ -246,11 +245,11 @@ class $modify(LevelCell) {
 			"No", "Yes",
 			[this, currentIndex, callback](auto, bool yesBtn) {
 				if (yesBtn) {
-					ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;					
-					return callback(true);
-				} else {
-					return callback(false);
-				}
+                    ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;
+                    return callback(true);
+                } else {
+                    return callback(false);
+                }
 			}
 		);
 	}
@@ -258,15 +257,13 @@ class $modify(LevelCell) {
 
 class $modify(PlayLayer) {
 	void destroyPlayer(PlayerObject* player, GameObject* obj) {
-		if (obj == m_anticheatSpike) return PlayLayer::destroyPlayer(player, obj);
-		if (this->m_isPracticeMode) return PlayLayer::destroyPlayer(player, obj);
-		if (!challenge.active) return PlayLayer::destroyPlayer(player, obj);
+		if (obj == m_anticheatSpike || this->m_isPracticeMode || !challenge.active) return PlayLayer::destroyPlayer(player, obj);
 		
 		challenge.tempCoins = 0;
-
 		if (--challenge.lives <= 0) {
 			PlayLayer::pauseGame(true);
 			FLAlertLayer::create("Out of lives!", fmt::format("You are out of lives. You survived {} levels!", challenge.levels), "OK")->show();
+            challenge.active = false;
 		}
 
 		PlayLayer::destroyPlayer(player, obj);
@@ -274,7 +271,8 @@ class $modify(PlayLayer) {
 
 	void levelComplete() {
 		if (challenge.active && !this->m_isPracticeMode) {
-			ChallengeBrowser::Fields::lastCompletedIndex++;
+            ChallengeBrowser::Fields::lastCompletedIndex++;
+
 			challenge.levels++;
 			challenge.lives += challenge.tempCoins;
 			challenge.coins += challenge.tempCoins;
