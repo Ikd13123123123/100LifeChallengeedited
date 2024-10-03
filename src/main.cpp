@@ -15,10 +15,10 @@ Challenge challenge;
 class $modify(ChallengeBrowser, LevelBrowserLayer) {
 	struct Fields {
 		static ChallengeBrowser* s_instance;
-		static int lastCompletedIndex;
-		CCMenuItemSpriteExtra* challengeButton;
-		CCMenuItemSpriteExtra* exchangeButton;
-		CCLabelBMFont* statusLabel;
+		static int i_lastCompletedIndex;
+		CCMenuItemSpriteExtra* m_challengeButton;
+		CCMenuItemSpriteExtra* m_exchangeButton;
+		CCLabelBMFont* m_statusLabel;
 	};
 	
 	bool init(GJSearchObject* p0) {
@@ -37,7 +37,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			button->setID("hundred-challenge-button"_spr);
 			button->setPositionY(50.0f);
 
-			this->m_fields->challengeButton = button;
+			this->m_fields->m_challengeButton = button;
 			menu->addChild(button);
 		}
 
@@ -77,10 +77,10 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 					challenge.coins = 0;
 					challenge.tempCoins = 0;
 
-                    m_fields->lastCompletedIndex = -1;
+                    m_fields->i_lastCompletedIndex = -1;
 
-					if (this->m_fields->challengeButton) {
-						this->m_fields->challengeButton->setVisible(false);
+					if (this->m_fields->m_challengeButton) {
+						this->m_fields->m_challengeButton->setVisible(false);
 					}
 
 					this->showChallengeStatus();
@@ -117,7 +117,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		statusLabel->setPosition({ -238.0f, 40.0f });
 		statusLabel->setScale(0.3f);
 
-		this->m_fields->statusLabel = statusLabel;
+		this->m_fields->m_statusLabel = statusLabel;
 
 		statusMenu->addChild(statusLabel);
 		this->addChild(statusMenu);
@@ -125,31 +125,31 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 
 	void updateChallengeStatus() {
 		if (challenge.lives <= 0) {
-			m_fields->statusLabel->removeFromParent();
-			m_fields->statusLabel = nullptr;
+			m_fields->m_statusLabel->removeFromParent();
+			m_fields->m_statusLabel = nullptr;
 
-			m_fields->challengeButton->setVisible(true);
+			m_fields->m_challengeButton->setVisible(true);
 		}
 		
-		if (m_fields->statusLabel) {
+		if (m_fields->m_statusLabel) {
 			std::string updatedStatusText = fmt::format("Lives: {}\nPractice Runs: {}\nSkips: {}\nLevels: {}\nCoins: {}",
 			                                            challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels, challenge.coins);
-			m_fields->statusLabel->setString(updatedStatusText.c_str());
+			m_fields->m_statusLabel->setString(updatedStatusText.c_str());
 
-			if (challenge.coins >= 3 && !m_fields->exchangeButton) {
+			if (challenge.coins >= 3 && !m_fields->m_exchangeButton) {
 				auto sprite = ButtonSprite::create("Exchange");
 				auto button = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ChallengeBrowser::onExchange));
 				button->setID("coin-exchange"_spr);
 				button->setPosition({ -256.0f, 5.0f });
 				button->setScale(0.375f);
 
-				m_fields->exchangeButton = button;
+				m_fields->m_exchangeButton = button;
 
 				auto statusMenu = static_cast<CCMenu*>(this->getChildByID("100-life-status"));
 				statusMenu->addChild(button);
-			} else if (challenge.coins < 3 && m_fields->exchangeButton) {
-				m_fields->exchangeButton->removeFromParent();
-				m_fields->exchangeButton = nullptr;
+			} else if (challenge.coins < 3 && m_fields->m_exchangeButton) {
+				m_fields->m_exchangeButton->removeFromParent();
+				m_fields->m_exchangeButton = nullptr;
 			}
 		}
 	}
@@ -168,11 +168,18 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 		if (!content) return -1;
 
 		auto pageEntries = listView->m_entries;
-
+		
+		int beforeCurrent = 0;
+		auto currentPage = this->m_pageStartIdx / 10;
+		for (int i = 0; i < currentPage; i++) {
+			int itemsOnPage = pageEntries->count() - beforeCurrent;
+			beforeCurrent += itemsOnPage;
+		}
+		
 		for (int i = 0; i < pageEntries->count(); ++i) {
 			auto cell = static_cast<LevelCell*>(content->getChildren()->objectAtIndex(i));
 			if (cell && cell->m_level == level) {
-				return i;
+				return beforeCurrent + i;
 			}
 		}
 
@@ -181,7 +188,7 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 };
 
 ChallengeBrowser* ChallengeBrowser::Fields::s_instance = nullptr;
-int ChallengeBrowser::Fields::lastCompletedIndex = -1;
+int ChallengeBrowser::Fields::i_lastCompletedIndex = -1;
 
 class $modify(PauseLayer) {
 	void onPracticeMode(CCObject* sender) {
@@ -223,14 +230,14 @@ class $modify(LevelCell) {
 
 	SkipRes shouldSkip(GJGameLevel* level) {
         int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(level);
-		if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 1) {
-			if (currentIndex > ChallengeBrowser::Fields::lastCompletedIndex + 2) {
+		if (currentIndex > ChallengeBrowser::Fields::i_lastCompletedIndex + 1) {
+			if (currentIndex > ChallengeBrowser::Fields::i_lastCompletedIndex + 2) {
 				return SkipRes::SkipAhead;
 			}
 			return SkipRes::Skip;
 		} 
 		
-		if (currentIndex < ChallengeBrowser::Fields::lastCompletedIndex + 1) {
+		if (currentIndex < ChallengeBrowser::Fields::i_lastCompletedIndex + 1) {
 			return SkipRes::Rebeat;
 		}
 
@@ -245,7 +252,7 @@ class $modify(LevelCell) {
 			"No", "Yes",
 			[this, currentIndex, callback](auto, bool yesBtn) {
 				if (yesBtn) {
-                    ChallengeBrowser::Fields::lastCompletedIndex = currentIndex - 1;
+                    ChallengeBrowser::Fields::i_lastCompletedIndex = currentIndex - 1;
                     return callback(true);
                 } else {
                     return callback(false);
@@ -256,9 +263,27 @@ class $modify(LevelCell) {
 };
 
 class $modify(PlayLayer) {
+	struct Fields {
+		CCLabelBMFont* m_challengeLabel;
+	};
+	
+	bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+		PlayLayer::init(level, useReplay, dontCreateObjects);
+		if (!challenge.active) return true;
+
+		m_fields->m_challengeLabel = CCLabelBMFont::create("", "bigFont.fnt");
+		m_fields->m_challengeLabel->setString(fmt::format("Lives: {}\nP. Runs: {}\nSkips: {}\nLevels: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
+		m_fields->m_challengeLabel->setScale(0.5f);
+
+		m_uiLayer->addChild(m_fields->m_challengeLabel);
+
+		return true;
+	}
+	
 	void destroyPlayer(PlayerObject* player, GameObject* obj) {
 		if (obj == m_anticheatSpike || this->m_isPracticeMode || !challenge.active) return PlayLayer::destroyPlayer(player, obj);
 		
+		updateStatus();
 		challenge.tempCoins = 0;
 		if (--challenge.lives <= 0) {
 			PlayLayer::pauseGame(true);
@@ -271,7 +296,7 @@ class $modify(PlayLayer) {
 
 	void levelComplete() {
 		if (challenge.active && !this->m_isPracticeMode) {
-            ChallengeBrowser::Fields::lastCompletedIndex++;
+            ChallengeBrowser::Fields::i_lastCompletedIndex++;
 
 			challenge.levels++;
 			challenge.lives += challenge.tempCoins;
@@ -279,6 +304,10 @@ class $modify(PlayLayer) {
 		}
 
 		PlayLayer::levelComplete();
+	}
+
+	void updateStatus() {
+		m_fields->m_challengeLabel->setString(fmt::format("Lives: {}\nP. Runs: {}\nSkips: {}\nLevels: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
 	}
 };
 
@@ -306,7 +335,7 @@ class $modify(LevelInfoLayer) {
 		LevelInfoLayer::keyBackClicked();
 		
         int currentIndex = ChallengeBrowser::Fields::s_instance->getLevelIndex(this->m_level);
-		ChallengeBrowser::Fields::lastCompletedIndex = currentIndex;
+		ChallengeBrowser::Fields::i_lastCompletedIndex = currentIndex;
 
 		FLAlertLayer::create("Level Failed", "This level no longer exists.", "OK")->show();
 	}

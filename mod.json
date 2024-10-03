@@ -1,5 +1,5 @@
 {
-	"geode": "3.7.1",
+	"geode": "3.8.1",
 	"gd": {
 		"win": "2.206",
 		"android": "2.206",
@@ -21,5 +21,6 @@
 	"links": {
 		"source": "https://github.com/at4pm/100LifeChallenge",
 		"community": "https://discord.gg/abESXwT6rK"
-	}
+	},
+	"tags": ["gameplay"]
 }
