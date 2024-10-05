@@ -22,5 +22,12 @@
 		"source": "https://github.com/at4pm/100LifeChallenge",
 		"community": "https://discord.gg/abESXwT6rK"
 	},
+	"dependencies": [
+		{
+			"id": "geode.node-ids",
+			"version": "1.15.0",
+			"importance": "required"
+		}
+	],
 	"tags": ["gameplay"]
 }

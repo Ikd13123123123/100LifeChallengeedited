@@ -185,6 +185,11 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 
         return -1;
 	}
+
+	void onRefresh(CCObject* sender) {
+		if (challenge.active) return;
+		else return LevelBrowserLayer::onRefresh(sender);
+	}
 };
 
 ChallengeBrowser* ChallengeBrowser::Fields::s_instance = nullptr;
@@ -272,8 +277,11 @@ class $modify(PlayLayer) {
 		if (!challenge.active) return true;
 
 		m_fields->m_challengeLabel = CCLabelBMFont::create("", "bigFont.fnt");
-		m_fields->m_challengeLabel->setString(fmt::format("Lives: {}\nP. Runs: {}\nSkips: {}\nLevels: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
-		m_fields->m_challengeLabel->setScale(0.5f);
+		m_fields->m_challengeLabel->setString(fmt::format("LIVES: {}\nP. RUNS: {}\nSKIPS: {}\nLEVELS: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
+		m_fields->m_challengeLabel->setScale(0.3f);
+		m_fields->m_challengeLabel->setPosition({33.f, 26.f});
+		m_fields->m_challengeLabel->setSkewX(4.f);
+		m_fields->m_challengeLabel->setOpacity(0.6f * 255.f);
 
 		m_uiLayer->addChild(m_fields->m_challengeLabel);
 
@@ -307,7 +315,7 @@ class $modify(PlayLayer) {
 	}
 
 	void updateStatus() {
-		m_fields->m_challengeLabel->setString(fmt::format("Lives: {}\nP. Runs: {}\nSkips: {}\nLevels: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
+		m_fields->m_challengeLabel->setString(fmt::format("LIVES: {}\nP. RUNS: {}\nSKIPS: {}\nLEVELS: {}", challenge.lives, challenge.practiceRuns, challenge.skips, challenge.levels).c_str());
 	}
 };
 
