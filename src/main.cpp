@@ -70,9 +70,9 @@ class $modify(ChallengeBrowser, LevelBrowserLayer) {
 			[this](auto, bool yesBtn) {
 				if (yesBtn) {
 					challenge.active = true;
-					challenge.lives = 100;
-					challenge.practiceRuns = 3;
-					challenge.skips = 3;
+					challenge.lives = 1000;
+					challenge.practiceRuns = 300;
+					challenge.skips = 300;
 					challenge.levels = 0;
 					challenge.coins = 0;
 					challenge.tempCoins = 0;
