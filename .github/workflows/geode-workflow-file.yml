@@ -1,4 +1,4 @@
-name: Build Geode Mod for Relaseing
+name: Build Geode Mod for Releasing
 
 on:
   workflow_dispatch:
