@@ -1,14 +1,14 @@
 {
 	"geode": "3.8.1",
 	"gd": {
-		"win": "2.206",
+		"win": "2.204",
 		"android": "2.206",
 		"mac": "2.206",
 		"ios": "2.206"
 	},
 	"id": "Ikd13123123123.edited.100_life_challenge",
 	"name": "100 Life Challenge (EDITED)",
-	"version": "v1.0.0",
+	"version": "v0.0.3",
 	"developer": "Ikd13123123123",
 	"description": "Brings EVWs 100 Life Challenge to the game.",
 	"resources": {
