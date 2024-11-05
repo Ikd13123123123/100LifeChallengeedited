@@ -2,3 +2,5 @@
 - Initial release
 # v0.0.2
 - Fixed 100 lifes
+# v0.0.3 coming soon
+- idk yet
